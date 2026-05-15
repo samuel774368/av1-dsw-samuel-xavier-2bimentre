@@ -1,143 +1,100 @@
-// ========================================
-// CONTROLLER - CAMADA DE CONTROLE
-// ========================================
-// Esta camada é responsável por:
-// - Receber as requisições HTTP
-// - Validar os dados recebidos
-// - Chamar os métodos do Model
-// - Retornar as respostas adequadas
-
 import * as TarefaModel from "../models/tarefaModel.js";
 
-/**
- * Retorna todas as tarefas em formato JSON
- * @route GET /tarefas
- */
-export function listarTarefas(req, res) {
-  const tarefas = TarefaModel.obterTodasTarefas();
-  res.json(tarefas);
+export async function listarTarefas(req, res) {
+  try {
+    const tarefas = await TarefaModel.listarTarefas();
+    res.json({ sucesso: true, dados: tarefas, total: tarefas.length });
+  } catch (error) {
+    console.error("Erro ao listar tarefas:", error);
+    res.status(500).json({ erro: "Erro ao listar tarefas" });
+  }
 }
 
-/**
- * Retorna uma tarefa específica com base no id enviado na URL
- * @route GET /tarefas/:id
- */
-export function obterTarefa(req, res) {
-  // Converte o id recebido pela URL para número
-  const idNumero = Number(req.params.id);
+export async function buscarTarefaPorId(req, res) {
+  try {
+    const idNumero = Number(req.params.id);
+    if (Number.isNaN(idNumero)) {
+      return res.status(400).json({ erro: "ID inválido" });
+    }
 
-  // Valida se o id é realmente um número
-  if (Number.isNaN(idNumero)) {
-    return res.status(400).json({ erro: "ID inválido" });
+    const tarefa = await TarefaModel.buscarTarefaPorId(idNumero);
+    if (!tarefa) {
+      return res.status(404).json({ erro: "Tarefa não encontrada" });
+    }
+
+    res.json({ sucesso: true, dados: tarefa });
+  } catch (error) {
+    console.error("Erro ao buscar tarefa:", error);
+    res.status(500).json({ erro: "Erro ao buscar tarefa" });
   }
-
-  // Busca a tarefa pelo id no Model
-  const tarefa = TarefaModel.obterTarefaPorId(idNumero);
-
-  // Se não encontrar, retorna erro 404
-  if (!tarefa) {
-    return res.status(404).json({ erro: "Tarefa não encontrada" });
-  }
-
-  // Se encontrar, retorna a tarefa
-  res.json(tarefa);
 }
 
-/**
- * Cria uma nova tarefa
- * @route POST /tarefas
- */
-export function criarTarefa(req, res) {
-  // Pega a descrição enviada no corpo da requisição
-  const { descricao } = req.body;
+export async function criarTarefa(req, res) {
+  try {
+    const { title, description, categoryId } = req.body;
 
-  // Valida se a descrição foi enviada corretamente
-  if (typeof descricao !== "string" || descricao.trim() === "") {
-    return res.status(400).json({ erro: "Descrição é obrigatória" });
+    if (!title || typeof title !== "string" || title.trim() === "") {
+      return res.status(400).json({ erro: "Título é obrigatório" });
+    }
+
+    const tarefa = await TarefaModel.criarTarefa(title, description, categoryId);
+    res.status(201).json({
+      sucesso: true,
+      mensagem: "Tarefa criada com sucesso!",
+      dados: tarefa
+    });
+  } catch (error) {
+    console.error("Erro ao criar tarefa:", error);
+    res.status(500).json({ erro: "Erro ao criar tarefa" });
   }
-
-  // Cria a nova tarefa através do Model
-  const tarefaCriada = TarefaModel.criarNovaTarefa(descricao);
-
-  // Retorna status 201 (criado com sucesso)
-  res.status(201).json({
-    mensagem: "Tarefa criada com sucesso!",
-    tarefa: tarefaCriada
-  });
 }
 
-/**
- * Atualiza parcialmente uma tarefa existente
- * @route PATCH /tarefas/:id
- */
-export function atualizarTarefa(req, res) {
-  // Converte o id da URL para número
-  const idNumero = Number(req.params.id);
+export async function atualizarTarefa(req, res) {
+  try {
+    const idNumero = Number(req.params.id);
+    if (Number.isNaN(idNumero)) {
+      return res.status(400).json({ erro: "ID inválido" });
+    }
 
-  // Pega os dados enviados no corpo da requisição
-  const { descricao, concluida } = req.body;
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ erro: "Nenhum campo para atualizar" });
+    }
 
-  // Valida o id
-  if (Number.isNaN(idNumero)) {
-    return res.status(400).json({ erro: "ID inválido" });
+    const tarefa = await TarefaModel.atualizarTarefa(idNumero, req.body);
+    if (!tarefa) {
+      return res.status(404).json({ erro: "Tarefa não encontrada" });
+    }
+
+    res.json({
+      sucesso: true,
+      mensagem: "Tarefa atualizada com sucesso!",
+      dados: tarefa
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar tarefa:", error);
+    res.status(500).json({ erro: "Erro ao atualizar tarefa" });
   }
-
-  // Valida a descrição, se ela foi enviada
-  if (
-    descricao !== undefined &&
-    (typeof descricao !== "string" || descricao.trim() === "")
-  ) {
-    return res.status(400).json({ erro: "Descrição inválida" });
-  }
-
-  // Valida o status concluida, se ele foi enviado
-  if (concluida !== undefined && typeof concluida !== "boolean") {
-    return res.status(400).json({ erro: "concluida deve ser boolean" });
-  }
-
-  // Tenta atualizar a tarefa através do Model
-  const tarefaAtualizada = TarefaModel.atualizarTarefa(
-    idNumero,
-    descricao,
-    concluida
-  );
-
-  // Se não encontrar a tarefa, retorna erro 404
-  if (!tarefaAtualizada) {
-    return res.status(404).json({ erro: "Tarefa não encontrada" });
-  }
-
-  // Se atualizar com sucesso, retorna a tarefa atualizada
-  res.json({
-    mensagem: "Tarefa atualizada com sucesso!",
-    tarefa: tarefaAtualizada
-  });
 }
 
-/**
- * Remove uma tarefa pelo id
- * @route DELETE /tarefas/:id
- */
-export function excluirTarefa(req, res) {
-  // Converte o id da URL para número
-  const idNumero = Number(req.params.id);
+export async function excluirTarefa(req, res) {
+  try {
+    const idNumero = Number(req.params.id);
+    if (Number.isNaN(idNumero)) {
+      return res.status(400).json({ erro: "ID inválido" });
+    }
 
-  // Valida o id
-  if (Number.isNaN(idNumero)) {
-    return res.status(400).json({ erro: "ID inválido" });
+    const tarefa = await TarefaModel.excluirTarefa(idNumero);
+    if (!tarefa) {
+      return res.status(404).json({ erro: "Tarefa não encontrada" });
+    }
+
+    res.json({
+      sucesso: true,
+      mensagem: "Tarefa excluída com sucesso!",
+      dados: tarefa
+    });
+  } catch (error) {
+    console.error("Erro ao excluir tarefa:", error);
+    res.status(500).json({ erro: "Erro ao excluir tarefa" });
   }
-
-  // Tenta excluir a tarefa através do Model
-  const tarefaRemovida = TarefaModel.excluirTarefa(idNumero);
-
-  // Se não encontrar, retorna erro 404
-  if (!tarefaRemovida) {
-    return res.status(404).json({ erro: "Tarefa não encontrada" });
-  }
-
-  // Retorna a tarefa que foi removida
-  res.json({
-    mensagem: "Tarefa excluída com sucesso!",
-    tarefa: tarefaRemovida
-  });
 }

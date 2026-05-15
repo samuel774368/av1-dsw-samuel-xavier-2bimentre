@@ -22,12 +22,11 @@
   "homepage": "https://github.com/h-fcosta/js-basico#readme",
   "description": "",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "mysql2": "^3.10.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14",
-    "prisma": "^5.22.0"
+    "nodemon": "^3.1.14"
   }
 }
