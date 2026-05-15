@@ -1,11 +1,13 @@
 import app from "./app.js";
-import { prisma } from "./config/prisma.js";
+import { pool } from "./config/database.js";
 
 const PORT = process.env.PORT || 3000;
 
 async function main() {
   try {
-    await prisma.$connect();
+    const connection = await pool.getConnection();
+    await connection.ping();
+    connection.release();
     console.log("Conexão bem-sucedida com o banco de dados!");
   } catch (error) {
     console.error("Erro ao conectar ao banco de dados:", error);
@@ -14,7 +16,7 @@ async function main() {
 }
 
 process.on("SIGINT", async () => {
-  await prisma.$disconnect();
+  await pool.end();
   process.exit(0);
 });
 
